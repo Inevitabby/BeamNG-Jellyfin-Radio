@@ -1,18 +1,41 @@
+// Audio graph:
+//
+// <audio> element:
+//   -> srcNode    
+//   -> liftGain   cabin-only: lift volume as vehicle speed increases
+//   -> shelf      cabin-only: cabin bass shelf (cabin pressure)
+//   -> muffle     lowpasses for inside and outside
+//   -> panner     3D position and distance falloff
+//   -> speakers
 (function () {
   if (window._jfRadio) { return; }
+
   var el = new Audio();
   el.preload = 'auto';
-  var ctx = null, srcNode = null, normGain = null, comp = null, liftGain = null;
+
+  // Web Audio objects
+  var ctx = null, srcNode = null, liftGain = null;
   var shelf = null, muffle = null, panner = null;
-  var pos = { x: 0, y: 0, z: 0 }
-  var outside = 0;  // 0 = in cabin, 1 = well outside
+
+  // Latest values from Lua (see setPos)
+  var pos = { x: 0, y: 0, z: 0 }; // car position relative to the camera
+  var outside = 0; // 0 = in cabin, 1 = well outside
   var speed = 0; // m/s
+
+  // Smoothing time constants (in seconds)
   var POS_TC = 0.08, TONE_TC = 0.15;
-  var MUFFLE_OPEN = 18000, MUFFLE_CLOSED = 800; // lowpass in cabin and out
+
+  // Lowpass for inside and outside cabin
+  var MUFFLE_OPEN = 18000, MUFFLE_CLOSED = 800;
+
+  // Cabin Bass Shelf
   var CABIN_BASS_DB = 2;
+
+  // Cabin-only volume lift. Reaches LIFT_MAX_DB at LIFT_FULL_SPEED (scales with speed squared)
   var LIFT_MAX_DB = 1, LIFT_FULL_SPEED = 35;
+
   var blobUrl = null;
-  var blocked = false;
+  var blocked = false; 
 
   function ease(param, v, tc) {
     if (tc) { param.setTargetAtTime(v, ctx.currentTime, tc); } else { param.value = v; }
@@ -29,20 +52,26 @@
     }
   }
 
+  // Apply muffle, bass shelf, and speed lift
   function applyTone(tc) {
     if (!panner) { return; }
-    var cabin = 1 - outside;
-    var s = Math.min(1, speed / LIFT_FULL_SPEED);
+    var cabin = 1 - outside; // 1 in cabin, 0 for outside
+    var s = Math.min(1, speed / LIFT_FULL_SPEED); // fraction of full speed
+    // 1. Cutoff glides from MUFFLE_OPEN to MUFFLE_CLOSED
     ease(muffle.frequency, MUFFLE_OPEN * Math.pow(MUFFLE_CLOSED / MUFFLE_OPEN, outside), tc);
+    // 2. Cabin bass shelf and speed lift fade-out as camera leaves cabin
     ease(shelf.gain, CABIN_BASS_DB * cabin, tc);
+    // 3. s * s keeps the lift negligible at low speed. (The 10^(dB/20) converts dB to gain.)
     ease(liftGain.gain, Math.pow(10, LIFT_MAX_DB * s * s * cabin / 20), tc);
   }
 
+  // Creates the audio graph (returns true if graph is ready)
   function build() {
     if (panner) { return true; }
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) { return false; }
     try {
+      // 1. Initialize all nodes / objects
       ctx = new AC();
       srcNode = ctx.createMediaElementSource(el);
       liftGain = ctx.createGain();
@@ -57,11 +86,15 @@
       panner.refDistance = 2;
       panner.maxDistance = 400;
       panner.rolloffFactor = 1;
-      srcNode.connect(panner);
+
+      // 2. Connect everything together
+      srcNode.connect(liftGain);
       liftGain.connect(shelf);
       shelf.connect(muffle);
       muffle.connect(panner);
       panner.connect(ctx.destination);
+
+      // 3. Apply values that arrived before the graph existed (no smoothing).
       applyPos(0);
       applyTone(0);
       return true;
@@ -71,15 +104,19 @@
     }
   }
 
+  // Track finished
   el.addEventListener('ended', function () {
     bngApi.engineLua("extensions.jellyfin_radio.onTrackEnded()");
   });
+
+  // Playback error
   el.addEventListener('error', function () {
     if (!el.getAttribute('src')) { return; }
     bngApi.engineLua("extensions.jellyfin_radio.onTrackError(" +
       (el.error ? el.error.code : 0) + ")");
   });
 
+  // Start or resume playback
   function start() {
     if (!el.getAttribute('src')) { return; }
     if (ctx && ctx.state === 'suspended') { ctx.resume(); }
@@ -104,6 +141,7 @@
     }
   }
 
+  // API called from radio.lua through be:queueJS.
   window._jfRadio = {
     play: function (path, vol) {
       var xhr = new XMLHttpRequest();
