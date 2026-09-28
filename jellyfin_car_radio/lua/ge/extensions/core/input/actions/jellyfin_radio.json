@@ -1,0 +1,3 @@
+{
+"jellyfin_radio_skip":{"cat":"gameplay","order":1,"ctx":"tlua","onDown":"extensions.jellyfin_radio.skipTrack()","title":"Jellyfin Car Radio: Skip Track","desc":"Stops the current track and tries to play a new one."}
+}
