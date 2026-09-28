@@ -110,7 +110,6 @@ end
 local bridgeJS = loadBridgeJS()
 
 local function js(fmt, ...)
-  be:queueJS(bridgeJS)
   be:queueJS(string.format(fmt, ...))
 end
 
@@ -338,6 +337,7 @@ local function startFetch()
       currentPath = path
       resetRetryDelay()
       local uiPath = path:sub(1, 1) == '/' and path or ('/' .. path)
+      be:queueJS(bridgeJS)
       js("window._jfRadio.play('%s',%f);", uiPath:gsub("'", "\\'"), cfg.volume)
       phase = 'playing'
       logI('playing: ' .. tostring(currentItemName))
@@ -361,6 +361,9 @@ local function proj(d, a)
 end
 
 -- 10 Hz camera-relative position push
+local POS_EPS = 0.2
+local lastX, lastY, lastZ = nil, nil, nil
+
 local function pushPos(dt)
   posTimer = posTimer + (dt or 0)
   if posTimer < 0.1 then return end
@@ -379,7 +382,12 @@ local function pushPos(dt)
     z = fwd.x * up.y - fwd.y * up.x,
   }
   local x, y, z = proj(d, right), proj(d, up), -proj(d, fwd)
-  js('window._jfRadio.setPos(%f,%f,%f);', x, y, z)
+  if lastX and math.abs(x - lastX) < POS_EPS and math.abs(y - lastY) < POS_EPS
+      and math.abs(z - lastZ) < POS_EPS then
+    return
+  end
+  lastX, lastY, lastZ = x, y, z
+  js('if(window._jfRadio)window._jfRadio.setPos(%.2f,%.2f,%.2f);', x, y, z)
 end
 
 local function onUpdate(dt)

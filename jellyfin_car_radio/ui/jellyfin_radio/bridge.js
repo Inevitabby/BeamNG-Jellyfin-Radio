@@ -3,8 +3,25 @@
   var el = new Audio();
   el.preload = 'auto';
   var ctx = null, srcNode = null, panner = null;
+  var pos = { x: 0, y: 0, z: 0 }
+  var POS_TC = 0.08; 
   var blobUrl = null;
   var blocked = false;
+
+  function ease(param, v, tc) {
+    if (tc) { param.setTargetAtTime(v, ctx.currentTime, tc); } else { param.value = v; }
+  }
+
+  function applyPos(tc) {
+    if (!panner) { return; }
+    if (panner.positionX) {
+      ease(panner.positionX, pos.x, tc);
+      ease(panner.positionY, pos.y, tc);
+      ease(panner.positionZ, pos.z, tc);
+    } else {
+      panner.setPosition(pos.x, pos.y, pos.z);
+    }
+  }
 
   function build() {
     if (panner) { return true; }
@@ -21,6 +38,7 @@
       panner.rolloffFactor = 1;
       srcNode.connect(panner);
       panner.connect(ctx.destination);
+      applyPos(0);
       return true;
     } catch (e) {
       console.error('jellyfin radio: audio graph failed', e);
@@ -93,12 +111,8 @@
     },
     setVolume: function (v) { el.volume = v; },
     setPos: function (x, y, z) {
-      if (!panner) { return; }
-      if (panner.positionX) {
-        panner.positionX.value = x; panner.positionY.value = y; panner.positionZ.value = z;
-      } else {
-        panner.setPosition(x, y, z);
-      }
+      pos.x = x; pos.y = y; pos.z = z;
+      applyPos(POS_TC);
     }
   };
 })();
