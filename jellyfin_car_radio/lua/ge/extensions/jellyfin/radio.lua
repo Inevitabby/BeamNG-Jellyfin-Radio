@@ -360,9 +360,19 @@ local function proj(d, a)
   return (d.x * a.x + d.y * a.y + d.z * a.z) / l
 end
 
+local OUTSIDE_NEAR, OUTSIDE_FAR = 2.5, 12
+
+local function cameraInside(cam)
+  if core_camera.isCameraInside then
+    local r = core_camera.isCameraInside(0, cam)
+    return r == 1 or r == true
+  end
+  return core_camera.getActiveCamName and core_camera.getActiveCamName(0) == 'driver' or false
+end
+
 -- 10 Hz camera-relative position push
-local POS_EPS = 0.2
-local lastX, lastY, lastZ = nil, nil, nil
+local POS_EPS, OUTSIDE_EPS = 0.2, 0.02
+local lastX, lastY, lastZ, lastO = nil, nil, nil, nil
 
 local function pushPos(dt)
   posTimer = posTimer + (dt or 0)
@@ -382,12 +392,19 @@ local function pushPos(dt)
     z = fwd.x * up.y - fwd.y * up.x,
   }
   local x, y, z = proj(d, right), proj(d, up), -proj(d, fwd)
-  if lastX and math.abs(x - lastX) < POS_EPS and math.abs(y - lastY) < POS_EPS
-      and math.abs(z - lastZ) < POS_EPS then
+  local outside = 0
+  if cameraInside(cam) then
+    x, y, z = 0, 0, 0
+  else
+    local dist = math.sqrt(x * x + y * y + z * z)
+    outside = math.min(1, math.max(0, (dist - OUTSIDE_NEAR) / (OUTSIDE_FAR - OUTSIDE_NEAR)))
+  end
+   if lastX and math.abs(x - lastX) < POS_EPS and math.abs(y - lastY) < POS_EPS
+     and math.abs(z - lastZ) < POS_EPS and math.abs(outside - lastO) < OUTSIDE_EPS then
     return
   end
-  lastX, lastY, lastZ = x, y, z
-  js('if(window._jfRadio)window._jfRadio.setPos(%.2f,%.2f,%.2f);', x, y, z)
+  lastX, lastY, lastZ, lastO = x, y, z, outside
+  js('if(window._jfRadio)window._jfRadio.setPos(%.2f,%.2f,%.2f,%.2f);', x, y, z, outside)
 end
 
 local function onUpdate(dt)

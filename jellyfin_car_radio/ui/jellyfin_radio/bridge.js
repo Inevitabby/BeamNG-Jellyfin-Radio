@@ -2,9 +2,11 @@
   if (window._jfRadio) { return; }
   var el = new Audio();
   el.preload = 'auto';
-  var ctx = null, srcNode = null, panner = null;
+  var ctx = null, srcNode = null, normGain = null, comp = null, muffle = null, panner = null;
   var pos = { x: 0, y: 0, z: 0 }
-  var POS_TC = 0.08; 
+  var outside = 0;  // 0 = in cabin, 1 = well outside
+  var POS_TC = 0.08, TONE_TC = 0.15;
+  var MUFFLE_OPEN = 18000, MUFFLE_CLOSED = 800; // lowpass in cabin and out
   var blobUrl = null;
   var blocked = false;
 
@@ -23,6 +25,11 @@
     }
   }
 
+  function applyTone(tc) {
+    if (!panner) { return; }
+    ease(muffle.frequency, MUFFLE_OPEN * Math.pow(MUFFLE_CLOSED / MUFFLE_OPEN, outside), tc);
+  }
+
   function build() {
     if (panner) { return true; }
     var AC = window.AudioContext || window.webkitAudioContext;
@@ -30,6 +37,8 @@
     try {
       ctx = new AC();
       srcNode = ctx.createMediaElementSource(el);
+      muffle = ctx.createBiquadFilter();
+      muffle.type = 'lowpass';
       panner = ctx.createPanner();
       panner.panningModel = 'equalpower';
       panner.distanceModel = 'inverse';
@@ -37,8 +46,10 @@
       panner.maxDistance = 400;
       panner.rolloffFactor = 1;
       srcNode.connect(panner);
+      muffle.connect(panner);
       panner.connect(ctx.destination);
       applyPos(0);
+      applyTone(0);
       return true;
     } catch (e) {
       console.error('jellyfin radio: audio graph failed', e);
@@ -110,9 +121,11 @@
       if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null; }
     },
     setVolume: function (v) { el.volume = v; },
-    setPos: function (x, y, z) {
+    setPos: function (x, y, z, o) {
       pos.x = x; pos.y = y; pos.z = z;
+      outside = +o || 0;
       applyPos(POS_TC);
+      applyTone(TONE_TC);
     }
   };
 })();
