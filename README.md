@@ -3,12 +3,19 @@
   <p>Yet another car radio / music mod for BeamNG.drive</p>
 </div>
 
-Plays random tracks from a Jellyfin (v12) media server through your car in BeamNG.drive with in-cabin 3D positional audio.
+<!-- TODO : Demo Video -->
+
+Plays random tracks from a Jellyfin (v12) media server through your car in BeamNG.drive with 3D positional audio, plus:
+
+- Distance muffling
+- Cabin bass shelf
+- Speed lift
+- Loudness normalization
 
 # Install
 
 > [!NOTE]
-> For brevity, `${BEAM}` is just shorthand for `~/.local/share/BeamNG/BeamNG.drive/current/` (Linux) or `tung tung sahur` (Windows).
+> For brevity, `${BEAM}` is just shorthand for `~/.local/share/BeamNG/BeamNG.drive/current/` (Linux) or `%LOCALAPPDATA%\BeamNG\BeamNG.drive\current\` (Windows).
 
 ## 1. Mod
 
@@ -36,11 +43,19 @@ If it doesn't exist, create `${BEAM}/settings/jellyfin_car_radio/config.json`:
 
 # How it Works
 
-- Starts automatically once you're in a vehicle
-- Asks Jellyfin for one random audio track (`SortBy=Random&Limit=1`),
-  downloads it, and plays it positionally at the car.
+Behavior:
+- Radio starts automatically once you're in a vehicle.
+- Asks Jellyfin for one random audio track (`SortBy=Random&Limit=1`) and downloads it.
   * On track end, does it again.
-- Leaving the vehicle (or going on foot) stops playback. Getting back in starts a fresh track.
+- Leaving the vehicle stops playback.
+
+Audio Graph:
+- Playback happens in Beam.ng's embedded browser (CEF).
+  - [`radio.lua`](jellyfin_car_radio/lua/ge/extensions/jellyfin/radio.lua) hands the audio file to [`bridge.js`](jellyfin_car_radio/ui/jellyfin_radio/bridge.js), which plays it through a Web Audio graph.
+  - [`radio.lua`](jellyfin_car_radio/lua/ge/extensions/jellyfin/radio.lua) also sends [`bridge.js`](jellyfin_car_radio/ui/jellyfin_radio/bridge.js) the camera-relative car position and vehicle speed at 10 Hz (values are eased).
+
+> [!NOTE]
+> The full signal chain and its tunable values (filter cutoffs, gains, distances) live in [`bridge.js`](jellyfin_car_radio/ui/jellyfin_radio/bridge.js). Go play with it!
 
 # Limitations
 
@@ -52,4 +67,5 @@ If it doesn't exist, create `${BEAM}/settings/jellyfin_car_radio/config.json`:
 
 # Credits
 
-The poll-for-vehicle loop and CEF/Web Audio bridge are based on [Roadwave](https://www.beamng.com/resources/roadwave-%E2%80%94-in-car-music-player-with-3d-audio.39115/)'s `rw_stream.lua` / `rw_audio.lua`.
+The poll-for-vehicle loop and CEF/Web Audio bridge are based on [Roadwave](https://www.beamng.com/resources/roadwave-%E2%80%94-in-car-music-player-with-3d-audio.39115/)'s `stream.lua` / `audio.lua`.
+
