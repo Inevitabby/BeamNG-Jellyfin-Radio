@@ -14,7 +14,7 @@
   el.preload = 'auto';
 
   // Web Audio objects
-  var ctx = null, srcNode = null, liftGain = null;
+  var ctx = null, srcNode = null, normGain = null, liftGain = null;
   var shelf = null, muffle = null, panner = null;
 
   // Latest values from Lua (see setPos)
@@ -74,6 +74,7 @@
       // 1. Initialize all nodes / objects
       ctx = new AC();
       srcNode = ctx.createMediaElementSource(el);
+      normGain = ctx.createGain();
       liftGain = ctx.createGain();
       shelf = ctx.createBiquadFilter();
       shelf.type = 'lowshelf';
@@ -88,7 +89,8 @@
       panner.rolloffFactor = 1;
 
       // 2. Connect everything together
-      srcNode.connect(liftGain);
+      srcNode.connect(normGain);
+      normGain.connect(liftGain);
       liftGain.connect(shelf);
       shelf.connect(muffle);
       muffle.connect(panner);
@@ -143,7 +145,7 @@
 
   // API called from radio.lua through be:queueJS.
   window._jfRadio = {
-    play: function (path, vol) {
+    play: function (path, vol, gainDb) {
       var xhr = new XMLHttpRequest();
       xhr.responseType = 'arraybuffer';
       xhr.onload = function () {
@@ -157,6 +159,9 @@
         el.src = blobUrl;
         el.volume = vol * vol;
         build();
+        if (normGain) {
+          normGain.gain.value = Math.pow(10, Math.max(-20, Math.min(6, +gainDb || 0)) / 20);
+        }
         start();
       };
       xhr.onerror = function () {

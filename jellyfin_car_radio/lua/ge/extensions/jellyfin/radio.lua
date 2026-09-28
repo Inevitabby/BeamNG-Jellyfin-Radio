@@ -274,7 +274,7 @@ local function fetchRandomItem(onDone, onError)
         onError('Jellyfin returned no audio items (is the library empty?)')
         return
       end
-      onDone(item.Id, item.Name or item.Id)
+      onDone(item.Id, item.Name or item.Id, tonumber(item.NormalizationGain))
     end,
     onError = onError,
   })
@@ -330,7 +330,7 @@ end
 
 local function startFetch()
   phase = 'fetching'
-  fetchRandomItem(function(itemId, name)
+  fetchRandomItem(function(itemId, name, gainDb)
     currentItemId, currentItemName = itemId, name
     phase = 'downloading'
     downloadItem(itemId, function(path)
@@ -338,9 +338,9 @@ local function startFetch()
       resetRetryDelay()
       local uiPath = path:sub(1, 1) == '/' and path or ('/' .. path)
       be:queueJS(bridgeJS)
-      js("window._jfRadio.play('%s',%f);", uiPath:gsub("'", "\\'"), cfg.volume)
+      js("window._jfRadio.play('%s',%f,%f);", uiPath:gsub("'", "\\'"), cfg.volume, gainDb or 0)
       phase = 'playing'
-      logI('playing: ' .. tostring(currentItemName))
+      logI(string.format('playing: %s (normalization gain %s dB)', tostring(currentItemName), tostring(gainDb)))
     end, function(msg)
       logW('download failed (' .. tostring(currentItemName) .. '): ' .. msg)
       cleanupCurrentCache()
