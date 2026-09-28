@@ -155,7 +155,7 @@
         if (blobUrl) { URL.revokeObjectURL(blobUrl); }
         blobUrl = URL.createObjectURL(new Blob([buf]));
         el.src = blobUrl;
-        el.volume = vol;
+        el.volume = vol * vol;
         build();
         start();
       };
