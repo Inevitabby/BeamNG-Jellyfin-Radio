@@ -2,11 +2,15 @@
   if (window._jfRadio) { return; }
   var el = new Audio();
   el.preload = 'auto';
-  var ctx = null, srcNode = null, normGain = null, comp = null, muffle = null, panner = null;
+  var ctx = null, srcNode = null, normGain = null, comp = null, liftGain = null;
+  var shelf = null, muffle = null, panner = null;
   var pos = { x: 0, y: 0, z: 0 }
   var outside = 0;  // 0 = in cabin, 1 = well outside
+  var speed = 0; // m/s
   var POS_TC = 0.08, TONE_TC = 0.15;
   var MUFFLE_OPEN = 18000, MUFFLE_CLOSED = 800; // lowpass in cabin and out
+  var CABIN_BASS_DB = 2;
+  var LIFT_MAX_DB = 1, LIFT_FULL_SPEED = 35;
   var blobUrl = null;
   var blocked = false;
 
@@ -27,7 +31,11 @@
 
   function applyTone(tc) {
     if (!panner) { return; }
+    var cabin = 1 - outside;
+    var s = Math.min(1, speed / LIFT_FULL_SPEED);
     ease(muffle.frequency, MUFFLE_OPEN * Math.pow(MUFFLE_CLOSED / MUFFLE_OPEN, outside), tc);
+    ease(shelf.gain, CABIN_BASS_DB * cabin, tc);
+    ease(liftGain.gain, Math.pow(10, LIFT_MAX_DB * s * s * cabin / 20), tc);
   }
 
   function build() {
@@ -37,6 +45,10 @@
     try {
       ctx = new AC();
       srcNode = ctx.createMediaElementSource(el);
+      liftGain = ctx.createGain();
+      shelf = ctx.createBiquadFilter();
+      shelf.type = 'lowshelf';
+      shelf.frequency.value = 65;
       muffle = ctx.createBiquadFilter();
       muffle.type = 'lowpass';
       panner = ctx.createPanner();
@@ -46,6 +58,8 @@
       panner.maxDistance = 400;
       panner.rolloffFactor = 1;
       srcNode.connect(panner);
+      liftGain.connect(shelf);
+      shelf.connect(muffle);
       muffle.connect(panner);
       panner.connect(ctx.destination);
       applyPos(0);
@@ -121,9 +135,10 @@
       if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null; }
     },
     setVolume: function (v) { el.volume = v; },
-    setPos: function (x, y, z, o) {
+    setPos: function (x, y, z, o, v) {
       pos.x = x; pos.y = y; pos.z = z;
       outside = +o || 0;
+      speed = +v || 0;
       applyPos(POS_TC);
       applyTone(TONE_TC);
     }
