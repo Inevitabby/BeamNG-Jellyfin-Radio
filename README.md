@@ -1,31 +1,36 @@
 <div align="center">
   <h1>BeamNG.drive Jellyfin Car Radio</h1>
   <p>Yet another car radio / music mod for BeamNG.drive</p>
+  <p>
+    <img alt="BeamNG.drive 0.39" src="https://img.shields.io/badge/BeamNG.drive-0.39-orange">
+    <img alt="Jellyfin 12.1" src="https://img.shields.io/badge/Jellyfin-12.1-00a4dc?logo=jellyfin&logoColor=white">
+    <a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/inevitabby/BeamNG-Jellyfin-Radio"></a>
+  </p>
 </div>
 
-<!-- TODO : Demo Video -->
+<div align="center">
+  <a href="https://cloud.disroot.org/s/sDzxbQfHxnJYrZ3?dir=/&editing=false&openfile=true">
+    <img src="images/thumbnail.png" width="630" alt="Watch Demo"/>
+  </a>
+</div>
 
-Plays random tracks from a Jellyfin (v12) media server through your car in BeamNG.drive with 3D positional audio, plus:
+Radio for your car that plays music from your Jellyfin media server with sweet 3D positional audio, plus:
 
 - Distance muffling
 - Cabin bass shelf
 - Speed lift
 - Loudness normalization
 
-# Install
+> [!WARNING]
+> This mod is currently untested on Windows and non-local Jellyfin. Testers & contributors would be greatly appreciated.
+
+# Installation
 
 > [!NOTE]
 > For brevity, `${BEAM}` is just shorthand for `~/.local/share/BeamNG/BeamNG.drive/current/` (Linux) or `%LOCALAPPDATA%\BeamNG\BeamNG.drive\current\` (Windows).
 
-## 1. Mod
-
-Copy `jellyfin_car_radio` into `${BEAM}/mods/unpacked/`.
-
-<!-- TODO Come up with a CI to "build"? -->
-
-## 2. Configuration
-
-If it doesn't exist, create `${BEAM}/settings/jellyfin_car_radio/config.json`:
+1. Download `jellyfin_car_radio.zip` from the latest [Release](../../releases) and put it in your mods folder (`${BEAM}/mods/`).
+2. Create `${BEAM}/settings/jellyfin_car_radio/config.json`:
 
 ```json
 {
@@ -35,24 +40,17 @@ If it doesn't exist, create `${BEAM}/settings/jellyfin_car_radio/config.json`:
 }
 ```
 
-> [!NOTE]
-> You can create an API key in Jellyfin by navigating `Dashboard` -> `API Keys`.
+3. Generate and fill-in your Jellyfin API key (in Jellyfin go to `Dashboard` -> `API Keys`)
 
 > [!TIP]
-> Once in Beam.ng, you can bind a button to skip the current track (`Options` -> `Controls` -> `Jellyfin Car Radio: Skip Track` (search)). (It is unbound by default.)
+> Once in BeamNG, you can bind a button to skip the current track (`Options` -> `Controls` -> `Jellyfin Car Radio: Skip Track`).
 
 # How it Works
 
-Behavior:
-- Radio starts automatically once you're in a vehicle.
-- Asks Jellyfin for one random audio track (`SortBy=Random&Limit=1`) and downloads it.
-  * On track end, does it again.
-- Leaving the vehicle stops playback.
-
-Audio Graph:
-- Playback happens in Beam.ng's embedded browser (CEF).
-  - [`radio.lua`](jellyfin_car_radio/lua/ge/extensions/jellyfin/radio.lua) hands the audio file to [`bridge.js`](jellyfin_car_radio/ui/jellyfin_radio/bridge.js), which plays it through a Web Audio graph.
-  - [`radio.lua`](jellyfin_car_radio/lua/ge/extensions/jellyfin/radio.lua) also sends [`bridge.js`](jellyfin_car_radio/ui/jellyfin_radio/bridge.js) the camera-relative car position and vehicle speed at 10 Hz (values are eased).
+- Radio starts automatically when you're in a vehicle, and leaving the vehicle stops playback.
+- [`radio.lua`](jellyfin_car_radio/lua/ge/extensions/jellyfin/radio.lua) downloads one random track from Jellyfin (`SortBy=Random&Limit=1`) to disk, then tells [`bridge.js`](jellyfin_car_radio/ui/jellyfin_radio/bridge.js) where the file is. When the track ends, it does it again.
+- Playback happens in BeamNG's embedded browser (CEF), where `bridge.js` plays the file through a Web Audio graph.
+- While a track plays, `radio.lua` sends `bridge.js` the camera-relative car position and vehicle speed at 10 Hz (values are eased).
 
 > [!NOTE]
 > The full signal chain and its tunable values (filter cutoffs, gains, distances) live in [`bridge.js`](jellyfin_car_radio/ui/jellyfin_radio/bridge.js). Go play with it!
@@ -60,8 +58,7 @@ Audio Graph:
 # Limitations
 
 - No HTTPS support.
-- Beam.ng sandbox only allows loopback access by default. So if your Jellyfin isn't on localhost, there is a CLI flag for Beam.ng to disable the sandbox.
-- There is no cache deduplication or size cap if you enable `keep_cache`. Don't turn it on unless you are debugging.
+- BeamNG.drive's sandbox only allows loopback access by default. So if your Jellyfin isn't on localhost, you'll need to disable the sandbox.
 - No custom base path / reverse-proxy subpath support in `server_url`, because I don't care.
 - Chunked HTTP responses aren't parsed, because I don't care.
 
