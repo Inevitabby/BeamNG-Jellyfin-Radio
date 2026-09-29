@@ -1,0 +1,38 @@
+name: Create Mod Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stamp version into info.json
+        run: |
+          f=jellyfin_car_radio/mod_info/jellyfin_car_radio/info.json
+          jq --arg v "${VERSION#v}" '.version = $v' "$f" > "$f.tmp"
+          mv "$f.tmp" "$f"
+
+      - name: Zip mod
+        run: cd jellyfin_car_radio && zip -r ../jellyfin_car_radio.zip .
+
+      - name: Publish release
+        run: |
+          gh release create "$VERSION" \
+            --target "$GITHUB_SHA" \
+            --title "$VERSION" \
+            --generate-notes \
+            jellyfin_car_radio.zip
