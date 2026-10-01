@@ -307,7 +307,7 @@ end
 local phase = 'idle'  -- idle | fetching | downloading | playing | waiting_retry
 local currentItemId, currentItemName, currentPath = nil, nil, nil
 local retryTimer, retryDelay = 0, 5
-local RETRY_BASE, RETRY_MAX = 5, 300
+local RETRY_BASE, RETRY_MAX = 5, 30
 local posTimer = 0
 local hadVehicle = false
 
