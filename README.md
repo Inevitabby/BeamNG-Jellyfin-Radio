@@ -16,10 +16,11 @@
 
 Radio for your car that plays music from your Jellyfin media server with sweet 3D positional audio, plus:
 
-- Distance muffling
 - Cabin bass shelf
-- Speed lift
+- Cabin crossfeed
+- Distance muffling
 - Loudness normalization
+- Speed lift
 
 > [!WARNING]
 > This mod is currently untested on Windows and non-local Jellyfin. Testers & contributors would be greatly appreciated.
@@ -48,7 +49,7 @@ Radio for your car that plays music from your Jellyfin media server with sweet 3
 # How it Works
 
 - Radio starts automatically when you're in a vehicle, and leaving the vehicle stops playback.
-- [`radio.lua`](jellyfin_car_radio/lua/ge/extensions/jellyfin/radio.lua) downloads one random track from Jellyfin (`SortBy=Random&Limit=1`) to disk, then tells [`bridge.js`](jellyfin_car_radio/ui/jellyfin_radio/bridge.js) where the file is. When the track ends, it does it again.
+- [`radio.lua`](jellyfin_car_radio/lua/ge/extensions/jellyfin/radio.lua) downloads one random track from Jellyfin (`SortBy=Random&Limit=1`) to disk, then tells [`bridge.js`](jellyfin_car_radio/ui/jellyfin_radio/bridge.js) where the file is.
 - Playback happens in BeamNG's embedded browser (CEF), where `bridge.js` plays the file through a Web Audio graph.
 - While a track plays, `radio.lua` sends `bridge.js` the camera-relative car position and vehicle speed at 10 Hz (values are eased).
 
