@@ -1,5 +1,0 @@
-{
-  "title": "Jellyfin Car Radio",
-  "description": "Plays random tracks from your own Jellyfin server through the car, with basic 3D positional audio. Requires a self-hosted Jellyfin server and a one-time config.json edit (see README!!!)",
-  "author": "inevitabby"
-}
