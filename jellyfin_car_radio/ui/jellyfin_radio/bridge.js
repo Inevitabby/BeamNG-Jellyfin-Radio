@@ -2,6 +2,7 @@
 //
 // <audio> element:
 //   -> srcNode    
+//   -> crossfeed  cabin-only: speaker-style crosstalk
 //   -> liftGain   cabin-only: lift volume as vehicle speed increases
 //   -> shelf      cabin-only: cabin bass shelf (cabin pressure)
 //   -> muffle     lowpasses for inside and outside
@@ -15,7 +16,7 @@
 
   // Web Audio objects
   var ctx = null, srcNode = null, normGain = null, liftGain = null;
-  var shelf = null, muffle = null, panner = null;
+  var shelf = null, muffle = null, panner = null, xf = null;
 
   // Latest values from Lua (see setPos)
   var pos = { x: 0, y: 0, z: 0 }; // car position relative to the camera
@@ -30,6 +31,9 @@
 
   // Cabin Bass Shelf
   var CABIN_BASS_DB = 2;
+
+  // Cabin crossfeed
+  var XF_DIRECT_IN = 0.7, XF_CROSS_IN = 0.3, XF_DIRECT_OUT = 1.0;
 
   // Cabin-only volume lift. Reaches LIFT_MAX_DB at LIFT_FULL_SPEED (scales with speed squared)
   var LIFT_MAX_DB = 2, LIFT_FULL_SPEED = 35;
@@ -52,7 +56,7 @@
     }
   }
 
-  // Apply muffle, bass shelf, and speed lift
+  // Apply muffle, bass shelf, speed lift, and crossfeed
   function applyTone(tc) {
     if (!panner) { return; }
     var cabin = 1 - outside; // 1 in cabin, 0 for outside
@@ -63,6 +67,30 @@
     ease(shelf.gain, CABIN_BASS_DB * cabin, tc);
     // 3. s * s keeps the lift negligible at low speed. (The 10^(dB/20) converts dB to gain.)
     ease(liftGain.gain, Math.pow(10, LIFT_MAX_DB * s * s * cabin / 20), tc);
+    // 4. Crossfeed fade out with the cabin
+    for (var i = 0; i < 2; i++) {
+      ease(xf.direct[i].gain, XF_DIRECT_OUT + (XF_DIRECT_IN - XF_DIRECT_OUT) * cabin, tc);
+      ease(xf.cross[i].gain, XF_CROSS_IN * cabin, tc);
+    }
+  }
+
+  // Speaker-style crosstalk
+  function makeCrossfeed(ctx) {
+    var inp = ctx.createGain();
+    inp.channelCount = 2; inp.channelCountMode = 'explicit';
+    var split = ctx.createChannelSplitter(2), merge = ctx.createChannelMerger(2);
+    var direct = [], cross = [];
+    inp.connect(split);
+    for (var ch = 0; ch < 2; ch++) {
+      var d = ctx.createGain(); d.gain.value = XF_DIRECT_IN;
+      var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700;
+      var dl = ctx.createDelay(0.01); dl.delayTime.value = 0.0003;
+      var c = ctx.createGain(); c.gain.value = XF_CROSS_IN;
+      split.connect(d, ch); d.connect(merge, 0, ch);
+      split.connect(lp, ch); lp.connect(dl); dl.connect(c); c.connect(merge, 0, 1 - ch);
+      direct.push(d); cross.push(c);
+    }
+    return { input: inp, output: merge, direct: direct, cross: cross };
   }
 
   // Creates the audio graph (returns true if graph is ready)
@@ -74,6 +102,7 @@
       // 1. Initialize all nodes / objects
       ctx = new AC();
       srcNode = ctx.createMediaElementSource(el);
+      xf = makeCrossfeed(ctx);
       normGain = ctx.createGain();
       liftGain = ctx.createGain();
       shelf = ctx.createBiquadFilter();
@@ -89,7 +118,8 @@
       panner.rolloffFactor = 1;
 
       // 2. Connect everything together
-      srcNode.connect(normGain);
+      srcNode.connect(xf.input);
+      xf.output.connect(normGain);
       normGain.connect(liftGain);
       liftGain.connect(shelf);
       shelf.connect(muffle);
