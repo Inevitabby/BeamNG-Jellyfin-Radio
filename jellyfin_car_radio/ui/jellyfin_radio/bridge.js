@@ -84,7 +84,7 @@
       panner = ctx.createPanner();
       panner.panningModel = 'equalpower';
       panner.distanceModel = 'inverse';
-      panner.refDistance = 2;
+      panner.refDistance = 2.75;
       panner.maxDistance = 400;
       panner.rolloffFactor = 1;
 
