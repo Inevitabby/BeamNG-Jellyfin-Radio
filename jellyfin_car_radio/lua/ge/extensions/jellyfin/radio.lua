@@ -5,7 +5,7 @@ local M = {}
 local CONFIG_TEMPLATE = [[{
   "server_url": "http://127.0.0.1:8096",
   "api_key": "your-api-key-here",
-  "volume": 0.3
+  "volume": 0.5
 }
 ]]
 

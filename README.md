@@ -36,7 +36,7 @@ Radio for your car that plays music from your Jellyfin media server with sweet 3
 {
   "server_url": "http://127.0.0.1:8096",
   "api_key": "your-jellyfin-api-key",
-  "volume": 0.42
+  "volume": 0.5
 }
 ```
 
