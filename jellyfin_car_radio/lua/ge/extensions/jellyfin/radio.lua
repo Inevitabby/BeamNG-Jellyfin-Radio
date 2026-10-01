@@ -121,7 +121,7 @@ end
 
 local READS_PER_FRAME = 8
 local READ_SIZE = 8192
-local CONNECT_TIMEOUT = 0.5 -- this value could bite me in the ass later 
+local CONNECT_DEADLINE = 3
 local REQUEST_DEADLINE = { meta = 10, audio = 60 }
 
 local request = nil
@@ -191,9 +191,9 @@ end
 local function startRequest(path, kind, opts)
   cancelRequest()  -- (a skip cancels whatever was in flight)
   local sock = socket.tcp()
-  sock:settimeout(CONNECT_TIMEOUT)
+  sock:settimeout(0)
   local ok, err = sock:connect(cfg.host, cfg.port)
-  if not ok then
+  if not ok and err ~= 'timeout' then
     pcall(function() sock:close() end)
     opts.onError('could not connect to Jellyfin: ' .. tostring(err))
     return
@@ -202,12 +202,13 @@ local function startRequest(path, kind, opts)
     'Authorization: MediaBrowser Token="%s", Client="JellyfinCarRadio", ' ..
     'Device="BeamNG.drive", DeviceId="jellyfin-car-radio", Version="1.0"',
     cfg.apiKey)
-  sock:send('GET ' .. path .. ' HTTP/1.0\r\nHost: ' .. cfg.host ..
-    '\r\nUser-Agent: JellyfinCarRadio\r\n' .. authHeader ..
-    '\r\nConnection: close\r\n\r\n')
-  sock:settimeout(0)
   request = {
     sock = sock, kind = kind, head = '', inBody = false, age = 0, bytesGot = 0,
+    connecting = true,
+    connectStart = socket.gettime(),
+    payload = 'GET ' .. path .. ' HTTP/1.0\r\nHost: ' .. cfg.host ..
+      '\r\nUser-Agent: JellyfinCarRadio\r\n' .. authHeader ..
+      '\r\nConnection: close\r\n\r\n',
     toFilePrefix = opts.toFilePrefix, toFile = nil,
     onDone = opts.onDone, onError = opts.onError,
   }
@@ -217,6 +218,17 @@ local function pumpRequest(dt)
   if not request then return end
   local r = request
   r.age = r.age + (dt or 0)
+  if r.connecting then
+    if r.sock:getpeername() then
+      r.connecting = false
+      r.sock:send(r.payload)
+    elseif socket.gettime() - r.connectStart > CONNECT_DEADLINE then
+      failRequest('timed out connecting to Jellyfin')
+      return
+    else
+      return
+    end
+  end
   local data, closed = readSocket(r.sock)
   if data and #data > 0 then
     if not r.inBody then
