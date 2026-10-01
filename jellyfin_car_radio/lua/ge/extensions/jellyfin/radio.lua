@@ -304,12 +304,13 @@ end
 
 -- === State Machine ===
 
-local phase = 'idle'  -- idle | fetching | downloading | playing | waiting_retry
+local phase = 'idle'  -- idle | fetching | playing | waiting_retry
 local currentItemId, currentItemName, currentPath = nil, nil, nil
 local retryTimer, retryDelay = 0, 5
 local RETRY_BASE, RETRY_MAX = 5, 30
 local posTimer = 0
 local hadVehicle = false
+local nextItem = nil
 
 local function hasVehicle()
   local veh = be:getPlayerVehicle(0)
@@ -340,29 +341,40 @@ local function scheduleRetry(reason)
   retryTimer = 0
 end
 
+-- Download a random track
+local function fetchTrack(onReady, onFail)
+  fetchRandomItem(function(id, name, gainDb)
+    if id == currentItemId then return onFail('same track as current') end
+    downloadItem(id, function(path)
+      onReady({ id = id, name = name, gainDb = gainDb, path = path })
+    end, onFail)
+  end, onFail)
+end
+
+local function playItem(it)
+  currentItemId, currentItemName, currentPath = it.id, it.name, it.path
+  resetRetryDelay()
+  local uiPath = it.path:sub(1, 1) == '/' and it.path or ('/' .. it.path)
+  be:queueJS(bridgeJS)
+  js("window._jfRadio.play('%s',%f,%f);", uiPath:gsub("'", "\\'"), cfg.volume, it.gainDb or 0)
+  phase = 'playing'
+  logI(string.format('playing: %s (normalization gain %s dB)', tostring(it.name), tostring(it.gainDb)))
+  fetchTrack(function(n) nextItem = n end,
+             function(msg) logW('prefetch failed: ' .. tostring(msg)) end)
+end
+
 local function startFetch()
+  if nextItem then
+    local it = nextItem
+    nextItem = nil
+    playItem(it)
+    return
+  end
   phase = 'fetching'
-  fetchRandomItem(function(itemId, name, gainDb)
-    currentItemId, currentItemName = itemId, name
-    phase = 'downloading'
-    downloadItem(itemId, function(path)
-      currentPath = path
-      resetRetryDelay()
-      local uiPath = path:sub(1, 1) == '/' and path or ('/' .. path)
-      be:queueJS(bridgeJS)
-      js("window._jfRadio.play('%s',%f,%f);", uiPath:gsub("'", "\\'"), cfg.volume, gainDb or 0)
-      phase = 'playing'
-      logI(string.format('playing: %s (normalization gain %s dB)', tostring(currentItemName), tostring(gainDb)))
-    end, function(msg)
-      logW('download failed (' .. tostring(currentItemName) .. '): ' .. msg)
-      cleanupCurrentCache()
-      bumpRetryDelay()
-      scheduleRetry('download failed')
-    end)
-  end, function(msg)
-    logW('could not get a random track: ' .. msg)
+  fetchTrack(playItem, function(msg)
+    logW('track fetch failed: ' .. tostring(msg))
     bumpRetryDelay()
-    scheduleRetry('track lookup failed')
+    scheduleRetry('track fetch failed')
   end)
 end
 
@@ -438,9 +450,9 @@ local function onUpdate(dt)
   end
   hadVehicle = nowHasVehicle
 
-  if phase == 'fetching' or phase == 'downloading' then
-    pumpRequest(dt)
-  elseif phase == 'waiting_retry' then
+  if request then pumpRequest(dt) end
+
+  if phase == 'waiting_retry' then
     retryTimer = retryTimer + (dt or 0)
     if retryTimer >= retryDelay then
       if nowHasVehicle then startFetch() else phase = 'idle' end
@@ -495,6 +507,8 @@ end
 local function onExtensionUnloaded()
   if not enabled then return end
   cancelRequest()
+  if nextItem and not cfg.keepCache then pcall(os.remove, nextItem.path) end
+  nextItem = nil
   stopPlayback()
   cleanupCurrentCache()
 end
