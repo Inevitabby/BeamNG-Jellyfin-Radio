@@ -32,7 +32,7 @@
   var CABIN_BASS_DB = 2;
 
   // Cabin-only volume lift. Reaches LIFT_MAX_DB at LIFT_FULL_SPEED (scales with speed squared)
-  var LIFT_MAX_DB = 1, LIFT_FULL_SPEED = 35;
+  var LIFT_MAX_DB = 2, LIFT_FULL_SPEED = 35;
 
   var blobUrl = null;
   var blocked = false; 
