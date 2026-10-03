@@ -1,6 +1,6 @@
 <div align="center">
   <h1>BeamNG.drive Jellyfin Car Radio</h1>
-  <p>Yet another car radio / music mod for BeamNG.drive</p>
+  <p>Immersive car radio that plays music from your Jellyfin media server.</p>
   <p>
     <img alt="BeamNG.drive 0.39" src="https://img.shields.io/badge/BeamNG.drive-0.39-orange">
     <img alt="Jellyfin 12.1" src="https://img.shields.io/badge/Jellyfin-12.1-00a4dc?logo=jellyfin&logoColor=white">
@@ -14,24 +14,13 @@
   </a>
 </div>
 
-Radio for your car that plays music from your Jellyfin media server with sweet 3D positional audio, plus:
-
-- Cabin bass shelf
-- Cabin crossfeed
-- Distance muffling
-- Loudness normalization
-- Speed lift
-
-> [!WARNING]
-> This mod is currently untested on Windows and non-local Jellyfin. Testers & contributors would be greatly appreciated.
-
 # Installation
 
 > [!NOTE]
-> For brevity, `${BEAM}` is just shorthand for `~/.local/share/BeamNG/BeamNG.drive/current/` (Linux) or `%LOCALAPPDATA%\BeamNG\BeamNG.drive\current\` (Windows).
+> For brevity, `${BEAM}` is shorthand for `~/.local/share/BeamNG/BeamNG.drive/current/` (Linux), or `%LOCALAPPDATA%\BeamNG\BeamNG.drive\current\` (Windows).
 
 1. Download `jellyfin_car_radio.zip` from the latest [Release](../../releases) and put it in your mods folder (`${BEAM}/mods/`).
-2. Create `${BEAM}/settings/jellyfin_car_radio/config.json`:
+2. Create / edit `${BEAM}/settings/jellyfin_car_radio/config.json`:
 
 ```json
 {
@@ -43,27 +32,30 @@ Radio for your car that plays music from your Jellyfin media server with sweet 3
 
 3. Generate and fill-in your Jellyfin API key (in Jellyfin go to `Dashboard` -> `API Keys`)
 
-> [!TIP]
-> Once in BeamNG, you can bind a button to skip the current track (`Options` -> `Controls` -> `Jellyfin Car Radio: Skip Track`).
+# Keybinds
+
+- `Jellyfin Car Radio: Skip Track` (Unbound)
 
 # How it Works
 
-- Radio starts automatically when you're in a vehicle, and leaving the vehicle stops playback.
-- [`radio.lua`](jellyfin_car_radio/lua/ge/extensions/jellyfin/radio.lua) downloads one random track from Jellyfin (`SortBy=Random&Limit=1`) to disk, then tells [`bridge.js`](jellyfin_car_radio/ui/jellyfin_radio/bridge.js) where the file is.
-- Playback happens in BeamNG's embedded browser (CEF), where `bridge.js` plays the file through a Web Audio graph.
-- While a track plays, `radio.lua` sends `bridge.js` the camera-relative car position and vehicle speed at 10 Hz (values are eased).
+Radio starts & stops automatically when you enter & leave a vehicle, respectively. In a little more detail:
 
-> [!NOTE]
-> The full signal chain and its tunable values (filter cutoffs, gains, distances) live in [`bridge.js`](jellyfin_car_radio/ui/jellyfin_radio/bridge.js). Go play with it!
+1. [`radio.lua`](jellyfin_car_radio/lua/ge/extensions/jellyfin/radio.lua) downloads tracks from Jellyfin (`SortBy=Random&Limit=1`) and sends it to [`bridge.js`](jellyfin_car_radio/ui/jellyfin_radio/bridge.js).
+2. Playback happens in BeamNG's embedded browser (CEF), where [`bridge.js`](jellyfin_car_radio/ui/jellyfin_radio/bridge.js) plays the file through a Web Audio graph to apply:
+    - 3D position,
+    - Cabin bass shelf and crossfeed,
+    - Distance muffling,
+    - Loudness normalization (if LUFS scan is enabled in Jellyfin), and
+    - Speed lift
+3. While a track plays, [`radio.lua`](jellyfin_car_radio/lua/ge/extensions/jellyfin/radio.lua) sends [`bridge.js`](jellyfin_car_radio/ui/jellyfin_radio/bridge.js) the camera-relative car position and vehicle speed at 10 Hz (values are eased to smooth changes).
 
 # Limitations
 
 - No HTTPS support.
-- BeamNG.drive's sandbox only allows loopback access by default. So if your Jellyfin isn't on localhost, you'll need to disable the sandbox.
+- BeamNG.drive's sandbox only allows loopback access by default. So if your Jellyfin isn't on localhost, you'll need to disable the sandbox. I haven't tested how this myself, because I don't care.
 - No custom base path / reverse-proxy subpath support in `server_url`, because I don't care.
 - Chunked HTTP responses aren't parsed, because I don't care.
 
 # Credits
 
 The poll-for-vehicle loop and CEF/Web Audio bridge are based on [Roadwave](https://www.beamng.com/resources/roadwave-%E2%80%94-in-car-music-player-with-3d-audio.39115/)'s `stream.lua` / `audio.lua`.
-
