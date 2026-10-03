@@ -22,9 +22,9 @@ jobs:
 
       - name: Stamp version into info.json
         run: |
-          f=jellyfin_car_radio/mod_info/jellyfin_car_radio/info.json
-          jq --arg v "${VERSION#v}" '.version = $v' "$f" > "$f.tmp"
-          mv "$f.tmp" "$f"
+          info=jellyfin_car_radio/mod_info/JCR/info.json
+          jq --arg v "${VERSION#v}" '.version_string = $v' "$info" > tmp.json
+          mv tmp.json "$info"
 
       - name: Zip mod
         run: cd jellyfin_car_radio && zip -r ../jellyfin_car_radio.zip .
