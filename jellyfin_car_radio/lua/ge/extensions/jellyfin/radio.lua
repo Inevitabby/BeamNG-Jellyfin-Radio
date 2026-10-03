@@ -11,6 +11,7 @@ local CONFIG_TEMPLATE = [[{
 local CONFIG_DIR = 'settings/jellyfin_car_radio/'
 local CONFIG_PATH = CONFIG_DIR .. 'config.json'
 local CACHE_DIR = CONFIG_DIR .. 'cache/'
+local DEFAULT_JELLYFIN_QUERY = 'IncludeItemTypes=Audio&Recursive=true&SortBy=Random&Limit=1'
 
 local cfg = nil      -- validated config table, or nil while disabled
 local enabled = false
@@ -79,11 +80,20 @@ local function loadConfig()
     return nil
   end
 
+  local jellyfinQuery = raw.jellyfin_query or DEFAULT_JELLYFIN_QUERY
+    if type(jellyfinQuery) ~= 'string'
+      or not ('&' .. jellyfinQuery .. '&'):lower():find('&limit=1&', 1, true) then
+    logE('jellyfin_query must be a string containing the parameter "Limit=1" (got ' ..
+    tostring(raw.jellyfin_query) .. ') - mod disabled')
+    return nil
+  end
+
   return {
     host = host,
     port = port or 8096,
     apiKey = raw.api_key,
-    keepCache = raw.keep_cache or false
+    keepCache = raw.keep_cache or false,
+    jellyfinQuery = jellyfinQuery
   }
 end
 
@@ -274,7 +284,7 @@ end
 -- === Jellyfin API ===
 
 local function fetchRandomItem(onDone, onError)
-  local path = '/Items?IncludeItemTypes=Audio&Recursive=true&SortBy=Random&Limit=1'
+  local path = '/Items?' .. cfg.jellyfinQuery
   startRequest(path, 'meta', {
     onDone = function(parsed)
       local item = parsed.Items and parsed.Items[1]

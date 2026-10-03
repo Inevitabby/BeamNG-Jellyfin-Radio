@@ -31,6 +31,35 @@
 
 3. Generate and fill-in your Jellyfin API key (in Jellyfin go to `Dashboard` -> `API Keys`)
 
+<details><summary><strong>Advanced: Custom Jellyfin Queries</strong></summary>
+
+> # Advanced: Custom Jellyfin Queries
+> 
+> By default, the radio picks tracks with this query against Jellyfin's [`GetItems`](https://api.jellyfin.org/#tag/Library/operation/GetItems) endpoint.
+> 
+> ```
+> IncludeItemTypes=Audio&Recursive=true&SortBy=Random&Limit=1
+> ```
+> 
+> To change which tracks are picked, add `jellyfin_query` to your `config.json`. Its value is everything after `/Items?`. e.g., to only play a certain genre, do:
+> 
+> ```json
+> {
+>   "server_url": "http://127.0.0.1:8096",
+>   "api_key": "your-jellyfin-api-key",
+>   "jellyfin_query": "IncludeItemTypes=Audio&Recursive=true&SortBy=Random&Limit=1&Genres=Rock"
+> }
+> 
+> ```
+> 
+> Requirements:
+> 
+> - The query must contain the parameter `Limit=1`
+> - The query must return audio items, so keep `IncludeItemTypes=Audio`
+> - The query is sent as-is, so it must already be URL-encoded
+
+</details>
+
 # Keybinds
 
 - `Jellyfin Car Radio: Skip Track` (Unbound)
@@ -51,6 +80,7 @@ Radio starts & stops automatically when you enter & leave a vehicle, respectivel
     - Speed lift
 3. While a track plays, [`radio.lua`](jellyfin_car_radio/lua/ge/extensions/jellyfin/radio.lua) sends [`bridge.js`](jellyfin_car_radio/ui/jellyfin_radio/bridge.js) the camera-relative car position and vehicle speed at 10 Hz (values are eased to smooth changes).
 
+
 # Limitations
 
 - No HTTPS support.
@@ -61,3 +91,4 @@ Radio starts & stops automatically when you enter & leave a vehicle, respectivel
 # Credits
 
 The poll-for-vehicle loop and CEF/Web Audio bridge are based on [Roadwave](https://www.beamng.com/resources/roadwave-%E2%80%94-in-car-music-player-with-3d-audio.39115/)'s `stream.lua` / `audio.lua`.
+
