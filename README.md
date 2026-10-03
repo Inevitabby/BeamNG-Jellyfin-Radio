@@ -25,8 +25,7 @@
 ```json
 {
   "server_url": "http://127.0.0.1:8096",
-  "api_key": "your-jellyfin-api-key",
-  "volume": 0.5
+  "api_key": "your-jellyfin-api-key"
 }
 ```
 
@@ -35,6 +34,9 @@
 # Keybinds
 
 - `Jellyfin Car Radio: Skip Track` (Unbound)
+
+> [!IMPORTANT]
+> Radio volume follows BeamNG's own Master and Music sliders.
 
 # How it Works
 

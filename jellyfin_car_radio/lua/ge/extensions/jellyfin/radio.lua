@@ -4,8 +4,7 @@ local M = {}
 
 local CONFIG_TEMPLATE = [[{
   "server_url": "http://127.0.0.1:8096",
-  "api_key": "your-api-key-here",
-  "volume": 0.5
+  "api_key": "your-api-key-here"
 }
 ]]
 
@@ -29,10 +28,8 @@ local function urlEncode(s)
   end))
 end
 
-local function clampOrDefault(v, lo, hi, default)
-  v = tonumber(v)
-  if not v then return default end
-  return math.min(hi, math.max(lo, v))
+local function radioVolume()
+  return settings.getValue('AudioMasterVol') * settings.getValue('AudioMusicVol')
 end
 
 -- === Config Loading ===
@@ -86,8 +83,7 @@ local function loadConfig()
     host = host,
     port = port or 8096,
     apiKey = raw.api_key,
-    keepCache = raw.keep_cache or false,
-    volume = clampOrDefault(raw.volume, 0, 1, 0.42),
+    keepCache = raw.keep_cache or false
   }
 end
 
@@ -356,7 +352,7 @@ local function playItem(it)
   resetRetryDelay()
   local uiPath = it.path:sub(1, 1) == '/' and it.path or ('/' .. it.path)
   be:queueJS(bridgeJS)
-  js("window._jfRadio.play('%s',%f,%f);", uiPath:gsub("'", "\\'"), cfg.volume, it.gainDb or 0)
+  js("window._jfRadio.play('%s',%f,%f);", uiPath:gsub("'", "\\'"), radioVolume(), it.gainDb or 0)
   phase = 'playing'
   logI(string.format('playing: %s (normalization gain %s dB)', tostring(it.name), tostring(it.gainDb)))
   fetchTrack(function(n) nextItem = n end,
@@ -499,8 +495,8 @@ local function onExtensionLoaded()
   cfg = loadConfig()
   enabled = cfg ~= nil
   if enabled then
-    logI(string.format('loaded, target %s:%d, cache %s, keep_cache=%s, volume=%.2f',
-      cfg.host, cfg.port, CACHE_DIR, tostring(cfg.keepCache), cfg.volume))
+    logI(string.format('loaded, target %s:%d, cache %s, keep_cache=%s',
+      cfg.host, cfg.port, CACHE_DIR, tostring(cfg.keepCache)))
   end
 end
 
@@ -513,11 +509,18 @@ local function onExtensionUnloaded()
   cleanupCurrentCache()
 end
 
+local function onSettingsChanged()
+  if enabled and phase == 'playing' then
+    js('if(window._jfRadio)window._jfRadio.setVolume(%f);', radioVolume())
+  end
+end
+
 M.onExtensionLoaded = onExtensionLoaded
 M.onExtensionUnloaded = onExtensionUnloaded
 M.onUpdate = onUpdate
 M.skipTrack = skipTrack
 M.onTrackEnded = onTrackEnded
 M.onTrackError = onTrackError
+M.onSettingsChanged = onSettingsChanged
 
 return M
