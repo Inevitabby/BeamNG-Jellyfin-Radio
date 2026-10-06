@@ -47,6 +47,8 @@
 
   function applyPos(tc) {
     if (!panner) { return; }
+    // TODO: Replace this by making the transition continuous by tweaking makeCrossFeed
+    panner.channelCount = (pos.x || pos.y || pos.z) ? 1 : 2;
     if (panner.positionX) {
       ease(panner.positionX, pos.x, tc);
       ease(panner.positionY, pos.y, tc);
