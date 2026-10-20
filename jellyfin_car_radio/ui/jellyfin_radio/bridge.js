@@ -33,7 +33,8 @@
   var CABIN_BASS_DB = 2;
 
   // Cabin crossfeed
-  var XF_DIRECT_IN = 0.7, XF_CROSS_IN = 0.3, XF_DIRECT_OUT = 1.0;
+  var XF_DIRECT_IN = 0.7, XF_CROSS_IN = 0.3, XF_MONO = 0.5;
+  var XF_LP_IN = 700, XF_LP_MONO = 20000, XF_DELAY_IN = 0.0003;
 
   // Cabin-only volume lift. Reaches LIFT_MAX_DB at LIFT_FULL_SPEED (scales with speed squared)
   var LIFT_MAX_DB = 2, LIFT_FULL_SPEED = 35;
@@ -69,10 +70,13 @@
     ease(shelf.gain, CABIN_BASS_DB * cabin, tc);
     // 3. s * s keeps the lift negligible at low speed. (The 10^(dB/20) converts dB to gain.)
     ease(liftGain.gain, Math.pow(10, LIFT_MAX_DB * s * s * cabin / 20), tc);
-    // 4. Crossfeed fade out with the cabin
+    // 4. Crossfeed fade out and fold to mono
+    var m = (pos.x || pos.y || pos.z) ? 1 : 0;
     for (var i = 0; i < 2; i++) {
-      ease(xf.direct[i].gain, XF_DIRECT_OUT + (XF_DIRECT_IN - XF_DIRECT_OUT) * cabin, tc);
-      ease(xf.cross[i].gain, XF_CROSS_IN * cabin, tc);
+      ease(xf.direct[i].gain, XF_DIRECT_IN + (XF_MONO - XF_DIRECT_IN) * m, tc);
+      ease(xf.cross[i].gain, XF_CROSS_IN + (XF_MONO - XF_CROSS_IN) * m, tc);
+      ease(xf.lows[i].frequency, XF_LP_IN * Math.pow(XF_LP_MONO / XF_LP_IN, m), tc);
+      ease(xf.delays[i].delayTime, XF_DELAY_IN * (1 - m), tc);
     }
   }
 
@@ -81,18 +85,18 @@
     var inp = ctx.createGain();
     inp.channelCount = 2; inp.channelCountMode = 'explicit';
     var split = ctx.createChannelSplitter(2), merge = ctx.createChannelMerger(2);
-    var direct = [], cross = [];
+    var direct = [], cross = [], lows = [], delays = [];
     inp.connect(split);
     for (var ch = 0; ch < 2; ch++) {
       var d = ctx.createGain(); d.gain.value = XF_DIRECT_IN;
-      var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700;
-      var dl = ctx.createDelay(0.01); dl.delayTime.value = 0.0003;
+      var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700; lp.frequency.value = XF_LP_IN;
+      var dl = ctx.createDelay(0.01); dl.delayTime.value = 0.0003; dl.delayTime.value = XF_DELAY_IN;
       var c = ctx.createGain(); c.gain.value = XF_CROSS_IN;
       split.connect(d, ch); d.connect(merge, 0, ch);
       split.connect(lp, ch); lp.connect(dl); dl.connect(c); c.connect(merge, 0, 1 - ch);
-      direct.push(d); cross.push(c);
+      direct.push(d); cross.push(c); lows.push(lp); delays.push(dl);
     }
-    return { input: inp, output: merge, direct: direct, cross: cross };
+    return { input: inp, output: merge, direct: direct, cross: cross, lows: lows, delays: delays };
   }
 
   // Creates the audio graph (returns true if graph is ready)
