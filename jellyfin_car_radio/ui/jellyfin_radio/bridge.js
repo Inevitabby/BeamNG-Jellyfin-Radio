@@ -24,7 +24,7 @@
   var speed = 0; // m/s
 
   // Smoothing time constants (in seconds)
-  var POS_TC = 0.08, TONE_TC = 0.15;
+  var POS_TC = 0.04, TONE_TC = 0.08;
 
   // Lowpass for inside and outside cabin
   var MUFFLE_OPEN = 18000, MUFFLE_CLOSED = 800;
