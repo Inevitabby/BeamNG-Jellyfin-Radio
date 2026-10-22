@@ -2,7 +2,7 @@
   <h1>JF BeamNG.drive Audio Player</h1>
   <p>Immersive car stereo that plays music from your Jellyfin media server.</p>
   <p>
-    <img alt="BeamNG.drive 0.40" src="https://img.shields.io/badge/BeamNG.drive-0.39-orange">
+    <img alt="BeamNG.drive 0.40" src="https://img.shields.io/badge/BeamNG.drive-0.40-orange">
     <img alt="Jellyfin 12.1" src="https://img.shields.io/badge/Jellyfin-12.1-00a4dc?logo=jellyfin&logoColor=white">
     <a href="../../releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/inevitabby/JF-BeamNG.drive-Audio-Player"></a>
   </p>
