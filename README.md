@@ -1,6 +1,6 @@
 <div align="center">
-  <h1>BeamNG.drive Jellyfin Car Radio</h1>
-  <p>Immersive car radio that plays music from your Jellyfin media server.</p>
+  <h1>JF BeamNG.drive Audio Player</h1>
+  <p>Immersive car stereo that plays music from your Jellyfin media server.</p>
   <p>
     <img alt="BeamNG.drive 0.39" src="https://img.shields.io/badge/BeamNG.drive-0.39-orange">
     <img alt="Jellyfin 12.1" src="https://img.shields.io/badge/Jellyfin-12.1-00a4dc?logo=jellyfin&logoColor=white">
